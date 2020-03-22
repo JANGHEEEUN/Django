@@ -1,19 +1,53 @@
 from django.test import TestCase, Client
 from bs4 import BeautifulSoup
-from .models import Post
+from .models import Post, Category
 from django.utils import timezone
 from django.contrib.auth.models import User
 
+def create_category(name='life', description=''):
+    category, is_created = Category.objects.get_or_create(
+        name=name,
+        description=description,
+    )
 
-def create_post(title, content, author):
+    return category
+
+def create_post(title, content, author, category=None):
     blog_post = Post.objects.create(
         title=title,
         content=content,
         created=timezone.now(),
-        author=author
+        author=author,
+        category=category,
     )
 
     return blog_post
+
+class TestModel(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.author_000 = User.objects.create(username='smith', password='nopassword')
+
+    def test_category(self):
+        category = create_category()
+
+        post_000 = create_post(
+            title='The first post',
+            content='Hello world We are the world',
+            author=self.author_000,
+            category=category,
+        )
+
+        self.assertEqual(category.post_set.count(), 1)
+
+    def test_post(self):
+        category = create_category()
+        post_000 = create_post(
+            title='The first post',
+            content='Hello world We are the world',
+            author=self.author_000,
+            category=category,
+        )
 
 # Create your tests here.
 class TestView(TestCase):
@@ -26,7 +60,13 @@ class TestView(TestCase):
         self.assertIn('Blog', navbar.text)
         self.assertIn('About Me', navbar.text)
 
-    def test_post_list(self):
+    def check_right_side(self, soup):
+        category_card = soup.find('div', id='category-card')
+        self.assertIn('미분류(1)', category_card.text)         #미분류(1)이 있어야 함
+        self.assertIn('정치/사회(1)', category_card.text)       #정치/사회(1) 있어야 함
+
+
+    def test_post_list_no_post(self):
         response = self.client.get('/blog/')
         self.assertEqual(response.status_code, 200)
 
@@ -40,10 +80,19 @@ class TestView(TestCase):
         self.assertEqual(Post.objects.count(), 0)
         self.assertIn('아직 게시물이 없습니다.', soup.body.text)
 
+    def test_post_list_with_post(self):
+
         post_000 = create_post(
             title='The first post',
             content='Hello world We are the world',
             author=self.author_000,
+        )
+
+        post_001 = create_post(
+            title='The second post',
+            content='Hello world We are the world',
+            author=self.author_000,
+            category=create_category(name='정치/사회')
         )
 
         self.assertGreater(Post.objects.count(), 0)
@@ -58,11 +107,26 @@ class TestView(TestCase):
         post_000_read_more_btn = body.find('a', id='read-more-post-{}'.format(post_000.pk))
         self.assertEqual(post_000_read_more_btn['href'], post_000.get_absolute_url())
 
+        # category card에서
+        self.check_right_side(soup)
+        #main_div엔는
+        main_div = soup.find('div', id='main_div')
+        self.assertIn('정치/사회', main_div.text)##'정치/사회' 있어야 함
+        self.assertIn('미분류', main_div.text)##'미분류' 있어야 함
+
+
     def test_post_detail(self):
         post_000 = create_post(
             title='The first post',
             content='Hello world We are the world',
             author=self.author_000,
+        )
+
+        post_001 = create_post(
+            title='The second post',
+            content='Hello world We are the world',
+            author=self.author_000,
+            category=create_category(name='정치/사회')
         )
 
         self.assertGreater(Post.objects.count(), 0)
@@ -85,3 +149,4 @@ class TestView(TestCase):
         self.assertIn(post_000.author.username, main_div.text)
         self.assertIn(post_000.content, main_div.text)
 
+        self.check_right_side(soup)
