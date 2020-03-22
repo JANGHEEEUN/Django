@@ -13,3 +13,7 @@ class Post(models.Model):
 
     def __str__(self):
         return '{} :: {}'.format(self.title, self.author)
+
+    def get_absolute_url(self):
+        return '/blog/{}/'.format(self.pk)
+        # 사이트에서 보기 버튼을 추가해줌
