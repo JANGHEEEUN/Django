@@ -10,6 +10,19 @@
             color: rgba(255,255,255,0);
          }
      </style>
+
+             <script>
+            window.onload = function(e) {
+                var _cvs = document.querySelector("#myCanvas"),
+                    _ctx = _cvs.getContext("2d"),
+                    _img = new Image();
+                
+                _img.src = "http://www.sporbiz.co.kr/news/photo/201506/4115_6180_2410.jpg";
+                _img.onload = function(e) {
+                    _ctx.drawImage(_img, 30, 30);
+                }
+            }
+       </script>
 </head>
 
 <body>
